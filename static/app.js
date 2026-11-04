@@ -78,7 +78,10 @@ const SCENARIOS = {
   },
 };
 
-const offlineMode = window.location.protocol === "file:";
+const offlineMode = window.location.protocol === "file:"
+  || new URLSearchParams(window.location.search).get("demo") === "1"
+  || window.location.hostname.endsWith(".github.io");
+if (offlineMode) document.querySelector(".brand").href = "./index.html?demo=1";
 let storage = null;
 try { storage = window.localStorage; } catch (_) { /* Temporary simulation still works. */ }
 const localSimulator = offlineMode ? new OfflineSimulator({ storage }) : null;

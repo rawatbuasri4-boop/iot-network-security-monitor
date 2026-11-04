@@ -1,5 +1,7 @@
 # IoT Watch - Network Security Monitoring Simulator
 
+[**Try the live demo**](https://rawatbuasri4-boop.github.io/iot-network-security-monitor/) - runs in your browser, with no installation or physical hardware required.
+
 A local IoT network security simulator with an interactive Thai-language dashboard, rule-based anomaly detection, and an optional Python/SQLite back end. Explore how a monitoring system identifies unknown devices, port-scan patterns, and traffic bursts without connecting physical hardware.
 
 **Project status:** Working educational prototype using simulated event records. It does not capture live packets, scan devices, or transmit attack traffic. Raspberry Pi deployment and live packet capture are future work.
@@ -27,6 +29,12 @@ A local IoT network security simulator with an interactive Thai-language dashboa
 | Tests | Python unittest; Node.js assertions |
 
 ## Quick start
+
+### Live demo
+
+Open [IoT Watch](https://rawatbuasri4-boop.github.io/iot-network-security-monitor/) and try the scenario buttons. The hosted demo uses the JavaScript simulation engine and browser localStorage. The Python/SQLite back end is available when running the project locally.
+
+GitHub Pages serves the root `index.html`, which opens `static/index.html?demo=1`. The explicit demo flag also supports other static hosts; Pages URLs automatically use browser simulation mode.
 
 ### Option 1: Open the dashboard - no installation
 
@@ -96,6 +104,7 @@ Node.js 20+ is needed only to run the JavaScript tests, not to use the dashboard
 
 ```text
 OPEN_DASHBOARD.html            Offline dashboard launcher
+index.html                    Hosted demo entry point
 iot_security_simulator.py     Python simulation, rules, storage, and HTTP API
 start_simulator.bat            Windows launcher
 static/                       Dashboard and browser simulation engine
