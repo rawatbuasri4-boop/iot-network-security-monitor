@@ -1,0 +1,60 @@
+const fs = require('node:fs');
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
+const path = require('node:path');
+const source = fs.readFileSync(path.join(__dirname, '../static/simulator.js'), 'utf8');
+const context = vm.createContext({});
+vm.runInContext(source, context);
+const Simulator = context.OfflineSimulator;
+let now = Date.now();
+const values = new Map();
+const storage = { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value) };
+const sim = new Simulator({ storage, clock: () => now });
+
+for (let i = 0; i < 60; i++) { now += 1600; sim.snapshot(); }
+assert.equal(sim.alerts.length, 0, 'Normal traffic must not cause alerts');
+const packets = sim.totalPackets;
+sim.setPaused(true);
+now += 3000;
+assert.equal(sim.snapshot().stats.events, packets, 'Paused simulation must not send packets');
+assert.equal(new Simulator({ storage, clock: () => now }).snapshot().paused, true);
+sim.setPaused(false);
+sim.snapshot();
+const afterResume = sim.totalPackets;
+for (let i = 0; i < 20; i++) sim.snapshot();
+assert.equal(sim.totalPackets, afterResume, 'Extra refreshes must not generate extra traffic');
+
+sim.runScenario('new_device');
+assert.equal(sim.devices.get('unknown-01').known, false);
+assert(sim.alerts.some(a => a.alert_type === 'unknown_device'));
+sim.trustDevice('unknown-01');
+const unknownAlerts = sim.alerts.filter(a => a.alert_type === 'unknown_device').length;
+for (let i = 0; i < 15; i++) { now += 1600; sim.snapshot(); }
+assert.equal(sim.alerts.filter(a => a.alert_type === 'unknown_device').length, unknownAlerts);
+const restored = new Simulator({ storage, clock: () => now });
+assert.equal(restored.devices.get('unknown-01').known, true, 'Approval survives reload');
+assert.equal(restored.totalPackets, sim.totalPackets, 'Counters survive reload');
+
+sim.runScenario('port_scan');
+assert(sim.alerts.some(a => a.alert_type === 'port_scan_pattern'));
+sim.runScenario('traffic_burst');
+assert(sim.alerts.some(a => a.alert_type === 'traffic_burst'));
+assert.equal(sim.devices.get('smartplug-01').status, 'warning');
+sim.trustDevice('smartplug-01');
+assert.equal(sim.devices.get('smartplug-01').status, 'warning', 'Trust does not disable anomaly detection');
+now += 21000;
+sim.snapshot();
+assert.equal(sim.devices.get('smartplug-01').status, 'normal', 'Status recovers after the time window');
+sim.reset();
+assert.equal(sim.devices.size, 3);
+assert.equal(sim.alerts.length, 0);
+assert.equal(sim.totalPackets, 0);
+const resetState = new Simulator({ storage, clock: () => now });
+assert.equal(resetState.devices.size, 3);
+assert.equal(resetState.alerts.length, 0);
+const blockedStorage = { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('blocked'); } };
+const temporary = new Simulator({ storage: blockedStorage, clock: () => now });
+temporary.runScenario('traffic_burst');
+assert(temporary.snapshot().alerts.some(a => a.alert_type === 'traffic_burst'));
+assert.equal(temporary.storageAvailable, false);
+console.log('PASS: normal traffic, refresh rate, three detections, approval, persistence, recovery, reset, storage fallback');
